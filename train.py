@@ -2,15 +2,13 @@
 
 import os
 import sys
-import numpy as np
 
 from argparse import ArgumentParser
 
 from datasets import Dataset, DatasetDict
 from transformers import (
-    GPT2Config,
-    GPT2Tokenizer,
-    GPT2ForSequenceClassification,
+    AutoTokenizer,
+    AutoModelForSequenceClassification,
     TrainingArguments,
     Trainer
 )
@@ -19,10 +17,10 @@ DEFAULTS = {
     'DATA_DIR': 'data',
     'TOKENIZER': 'tokenizer',
     'MODEL': 'model',
-    'MAX_LENGTH': 512,
+    'MAX_LENGTH': 256,
     'LEARNING_RATE': 1e-5,
     'BATCH_SIZE': 16,
-    'EPOCHS': 4,
+    'EPOCHS': 2,
 }
 
 def argparser():
@@ -89,7 +87,7 @@ def load_datasets(directory):
 
 
 def load_model(directory, num_labels, args):
-    model = GPT2ForSequenceClassification.from_pretrained(
+    model = AutoModelForSequenceClassification.from_pretrained(
         directory,
         num_labels=num_labels
     )
@@ -98,14 +96,9 @@ def load_model(directory, num_labels, args):
 
 
 def load_tokenizer(directory, args):
-    tokenizer = GPT2Tokenizer.from_pretrained(directory)
-    tokenizer.add_special_tokens({ 
-        "eos_token": "</s>",
-        "bos_token": "<s>",
-        "unk_token": "<unk>",
-        "pad_token": "<pad>",
-        "mask_token": "<mask>"
-    })
+    tokenizer = AutoTokenizer.from_pretrained(directory)
+    if tokenizer.pad_token is None:
+        tokenizer.add_special_tokens({ "pad_token": "<pad>" })
     tokenizer.add_prefix_space = True
     tokenizer.model_max_length = args.max_length
     return tokenizer
@@ -118,13 +111,7 @@ def make_encode_text_function(tokenizer):
             padding=True,
             truncation=True,
             max_length=tokenizer.model_max_length,
-            #return_tensors='pt',
         )
-        # Adding return_tensorts='pt' to the tokenizer call results in
-        # the tokenizer adding an unnecessary additional batch dimension,
-        # necessitating the lines below to remove it
-        # encoded['input_ids'] = encoded['input_ids'][0]
-        # encoded['attention_mask'] = encoded['attention_mask'][0]
         return encoded
     return encode_text
 
@@ -150,18 +137,18 @@ def main(argv):
     labels = list(set(l for d in data.values() for l in d['label_str']))
 
     tokenizer = load_tokenizer(args.tokenizer, args)
-    
+
     encode_text = make_encode_text_function(tokenizer)
     encode_label = make_encode_label_function(labels)
-    
+
     data = data.map(encode_text)
     data = data.map(encode_label)
-    
+
     model = load_model(args.model, len(labels), args)
-    
+
     # This needs to be set explicitly for some reason
     model.config.pad_token_id = tokenizer.pad_token_id
-    
+
     train_args = TrainingArguments(
         'output_dir',
         save_strategy='no',
