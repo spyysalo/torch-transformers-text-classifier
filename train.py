@@ -2,6 +2,7 @@
 
 import os
 import sys
+import logging
 
 from argparse import ArgumentParser
 
@@ -136,7 +137,9 @@ def load_model(directory, num_labels, args):
 def load_tokenizer(directory, args):
     tokenizer = AutoTokenizer.from_pretrained(directory)
     if tokenizer.pad_token is None:
-        tokenizer.add_special_tokens({ "pad_token": "<pad>" })
+        pad = tokenizer.eos_token
+        logging.warning(f'setting pad_token to {pad}')
+        tokenizer.add_special_tokens({ "pad_token": pad })
     tokenizer.add_prefix_space = True
     tokenizer.model_max_length = args.max_length
     return tokenizer
