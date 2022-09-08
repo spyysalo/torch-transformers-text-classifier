@@ -17,6 +17,9 @@ from transformers import (
     Trainer
 )
 
+from modeling import T5ForSequenceClassification
+
+
 LABEL_PREFIX = '__label__'
 
 LABEL_STRINGS = 'label_str'
@@ -86,7 +89,7 @@ class MultilabelTrainer(Trainer):
 def load_data(fn):
     texts, label_strings = [], []
     with open(fn) as f:
-        for ln, line in enumerate(f, start=1):            
+        for ln, line in enumerate(f, start=1):
             labels = []
             text = line.strip()
             while text.startswith(LABEL_PREFIX):
@@ -126,10 +129,22 @@ def is_multiclass(data):
 
 
 def load_model(directory, num_labels, args):
-    model = AutoModelForSequenceClassification.from_pretrained(
+    if 't5' in directory.lower():
+        # special case for T5, which isn't supported by
+        # AutoModelForSequenceClassification
+        logging.warning(
+            f'assuming {directory} is T5 model. T5 support is experimental '
+            f'and results may not reflect optimal model performance.'
+        )
+        class_ = T5ForSequenceClassification
+    else:
+        class_ = AutoModelForSequenceClassification
+
+    model = class_.from_pretrained(
         directory,
         num_labels=num_labels
     )
+
     model.config.max_length = args.max_length
     return model
 
@@ -192,7 +207,7 @@ def main(argv):
     labels = get_labels(data)
     multiclass = is_multiclass(data)
     print(f'multiclass: {multiclass}')
-    
+
     tokenizer = load_tokenizer(args.tokenizer, args)
 
     encode_text = make_encode_text_function(tokenizer)
