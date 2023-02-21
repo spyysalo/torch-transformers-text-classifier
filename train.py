@@ -25,9 +25,6 @@ LABEL_PREFIX = '__label__'
 LABEL_STRINGS = 'label_str'
 
 DEFAULTS = {
-    'DATA_DIR': 'data',
-    'TOKENIZER': 'tokenizer',
-    'MODEL': 'model',
     'MAX_LENGTH': 256,
     'LEARNING_RATE': 1e-5,
     'BATCH_SIZE': 16,
@@ -39,17 +36,17 @@ def argparser():
     ap.add_argument(
         '--tokenizer',
         metavar='DIR',
-        default=DEFAULTS['TOKENIZER']
+        default=None
     )
     ap.add_argument(
         '--model',
-        metavar='DIR',
-        default=DEFAULTS['MODEL']
+        metavar='DIR-OR-NAME',
+        required=True
     )
     ap.add_argument(
         '--data',
         metavar='DIR',
-        default=DEFAULTS['DATA_DIR']
+        required=True
     )
     ap.add_argument(
         '--max_length',
@@ -206,6 +203,9 @@ def microf1(pred):
 
 def main(argv):
     args = argparser().parse_args(argv[1:])
+
+    if args.tokenizer is None:
+        args.tokenizer = args.model
 
     data = load_datasets(args.data)
     labels = get_labels(data)
