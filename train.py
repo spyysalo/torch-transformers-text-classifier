@@ -71,6 +71,10 @@ def argparser():
         type=float,
         default=DEFAULTS['LEARNING_RATE']
     )
+    ap.add_argument(
+        '--no-test',
+        action='store_true'
+    )
     return ap
 
 
@@ -250,7 +254,21 @@ def main(argv):
 
     trainer.train()
 
-    print(trainer.evaluate(data['test'], metric_key_prefix='test'))
+    eval_set = 'dev' if args.no_test else 'test'
+    results = trainer.evaluate(data[eval_set], metric_key_prefix=eval_set)
+    print(results)
+
+    for key in sorted(results.keys()):
+        print('\t'.join(str(i) for i in [
+            f'{eval_set.upper()}-RESULT',
+            'model', args.model,
+            'data', args.data,
+            'max_length', args.max_length,
+            'batch_size', args.batch_size,
+            'learning_rate', args.learning_rate,
+            'epochs', args.epochs,
+            key, results[key]
+        ]))
 
 
 if __name__ == '__main__':
